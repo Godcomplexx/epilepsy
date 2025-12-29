@@ -1,0 +1,140 @@
+# Seizure Prediction System Configuration
+# CHB-MIT Dataset
+
+# === Paths ===
+paths:
+  data_root: "e:/epilepsy/files/chbmit/1.0.0"
+  output_dir: "e:/epilepsy/outputs"
+
+# === Timing Parameters (seconds) ===
+timing:
+  sph: 60                    # Seizure Prediction Horizon - минимальный запас до onset
+  sop: 600                   # Seizure Occurrence Period (10 min) - окно успешной тревоги
+  preictal_duration: 1800    # Preictal period P (30 min)
+  postictal_excluded: 1800   # Postictal excluded period (30 min)
+  interictal_gap: 14400      # Interictal gap from seizures (4 hours)
+
+# === Windowing ===
+windowing:
+  window_length: 4.0         # Window length in seconds
+  window_step: 2.0           # Step size (overlap 50%)
+
+# === Signal Processing ===
+preprocessing:
+  target_sfreq: 256          # Target sampling frequency (Hz)
+  bandpass_low: 0.5          # Bandpass filter low cutoff (Hz)
+  bandpass_high: 50.0        # Bandpass filter high cutoff (Hz)
+  notch_freq: 60.0           # Notch filter frequency (Hz)
+  notch_width: 2.0           # Notch filter width (Hz)
+
+# === Channel Selection ===
+channels:
+  # Standard 17 bipolar montage (T8-P8 excluded - missing in chb15/18/19)
+  selected:
+    - "FP1-F7"
+    - "F7-T7"
+    - "T7-P7"
+    - "P7-O1"
+    - "FP1-F3"
+    - "F3-C3"
+    - "C3-P3"
+    - "P3-O1"
+    - "FP2-F4"
+    - "F4-C4"
+    - "C4-P4"
+    - "P4-O2"
+    - "FP2-F8"
+    - "F8-T8"
+    # - "T8-P8"  # Excluded: missing in chb15, chb18, chb19
+    - "P8-O2"
+    - "FZ-CZ"
+    - "CZ-PZ"
+
+# === Feature Extraction ===
+features:
+  # Frequency bands for PSD
+  bands:
+    delta: [0.5, 4]
+    theta: [4, 8]
+    alpha: [8, 13]
+    beta: [13, 30]
+    gamma: [30, 50]
+  
+  # Statistical features
+  statistical:
+    - mean
+    - std
+    - skewness
+    - kurtosis
+    - line_length
+    - energy
+
+# === Alarm Logic ===
+alarm:
+  smoothing_window: 30       # Smoothing window in seconds
+  threshold: 0.5             # Probability threshold for alarm
+  n_consecutive: 5           # Number of consecutive windows above threshold
+  refractory_period: 300     # Refractory period after alarm (5 min)
+
+# === Training ===
+training:
+  model_type: "random_forest"  # Options: random_forest, svm, xgboost, mlp
+  random_seed: 42
+  validation: "loso"           # Leave-One-Seizure-Out
+  
+  # Random Forest params
+  rf_params:
+    n_estimators: 100
+    max_depth: 10
+    min_samples_split: 5
+    class_weight: "balanced"
+
+# === Quality Control ===
+qc:
+  max_nan_ratio: 0.1         # Max ratio of NaN values in window
+  max_flat_ratio: 0.1        # Max ratio of flat signal
+  amplitude_threshold: 500   # Max amplitude (uV) for clipping detection
+
+# === Deep Learning (CNN-LSTM) ===
+deep_learning:
+  # Model architecture
+  cnn_filters: [32, 64, 128]
+  lstm_hidden: 64
+  lstm_layers: 2
+  fc_hidden: 64
+  dropout: 0.3
+  use_attention: true
+  
+  # Pretraining (global model on all patients)
+  pretrain_epochs: 30
+  pretrain_lr: 0.001
+  
+  # Fine-tuning (patient-specific)
+  finetune_epochs: 20
+  finetune_lr: 0.0001
+  freeze_cnn: true
+  
+  # Training params
+  batch_size: 32
+  weight_decay: 0.0001
+  early_stopping: 10
+  
+  # Loss function
+  use_focal_loss: true        # Use Focal Loss instead of BCE (better for imbalanced data)
+  focal_gamma: 2.0            # Focusing parameter (0 = BCE, 2 = recommended)
+  focal_alpha: 0.75           # Class balance parameter (higher = more weight on positive class)
+  
+  # Data augmentation
+  use_augmentation: true      # Apply data augmentation during training
+  noise_std: 0.1              # Gaussian noise standard deviation
+  scale_range: [0.9, 1.1]     # Amplitude scaling range
+  time_shift_max: 25          # Max time shift in samples
+  channel_dropout_prob: 0.1   # Probability of dropping a channel
+  
+  # Artifact rejection
+  artifact_rejection: true    # Remove windows with artifacts before training
+  max_amplitude: 200.0        # Maximum allowed amplitude (μV)
+  flat_threshold: 0.000001    # Minimum std for non-flat signal
+  
+  # Features
+  include_entropy: false      # Include SampEn, PermEn features (disabled - too slow)

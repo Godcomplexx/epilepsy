@@ -1,0 +1,87 @@
+# Seizure Prediction System - .gitignore
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# === Virtual Environment ===
+.venv/
+venv/
+ENV/
+env/
+.env
+
+# === IDE ===
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# === Jupyter Notebooks ===
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# === Data Files (large, should not be in git) ===
+files/
+data/
+*.edf
+*.EDF
+
+# === Model Outputs ===
+outputs/
+output/
+*.pt
+*.pth
+*.pkl
+*.joblib
+*.h5
+
+# === Cached Data ===
+preprocessed_data/
+*.npz
+*.npy
+
+# === Logs ===
+logs/
+*.log
+
+# === Reports (generated) ===
+reports/
+*.html
+
+# === OS Files ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === Temporary Files ===
+*.tmp
+*.temp
+*.bak
+
+# === Secrets ===
+*.env
+.env.local
+secrets.yaml
