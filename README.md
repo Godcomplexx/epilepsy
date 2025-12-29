@@ -154,19 +154,3 @@ FC: 64 → 1 (sigmoid)
 - **Недостаточно данных** (chb18: только 1 файл)
 - **Высокая вариабельность между приступами** (chb12: 40 приступов, 47.5% sensitivity)
 
-## Планы по улучшению
-
-- [ ] Multi-task learning между пациентами
-- [ ] Классификация типов приступов
-- [ ] Online learning / адаптация в реальном времени
-- [ ] Снижение FA/24h с помощью постобработки
-- [ ] Добавление энтропийных признаков
-
-## Ссылки
-
-1. CHB-MIT Database: Shoeb, A. H. (2009). Application of machine learning to epileptic seizure onset detection and treatment.
-2. Focal Loss: Lin, T. Y., et al. (2017). Focal loss for dense object detection.
-
-## Лицензия
-
-MIT License
