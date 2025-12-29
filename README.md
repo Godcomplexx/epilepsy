@@ -1,172 +1,172 @@
-# Seizure Prediction System
+# Система предсказания эпилептических приступов
 
-Patient-specific seizure prediction using Transfer Learning on EEG data from the CHB-MIT dataset.
+Персонализированное предсказание эпилептических приступов с использованием Transfer Learning на данных ЭЭГ из базы CHB-MIT.
 
-## Overview
+## Обзор
 
-This system predicts epileptic seizures using a **CNN-LSTM architecture** with transfer learning:
-1. **Pretrain** a global model on multiple patients
-2. **Fine-tune** on each patient individually
-3. **Personalized thresholds** for optimal sensitivity/specificity trade-off
+Система предсказывает эпилептические приступы с помощью архитектуры **CNN-LSTM** и transfer learning:
+1. **Предобучение** глобальной модели на данных нескольких пациентов
+2. **Дообучение** (fine-tuning) для каждого пациента индивидуально
+3. **Персонализированные пороги** для оптимального баланса чувствительности и специфичности
 
-### Key Features
-- **Transfer Learning**: Global pretraining + patient-specific fine-tuning
-- **Adaptive Learning Rate**: Automatically adjusts based on patient data size
-- **Focal Loss**: Better handling of class imbalance (preictal << interictal)
-- **Artifact Rejection**: Automatic removal of noisy windows
-- **Personalized Thresholds**: Optimal threshold search per patient
+### Ключевые особенности
+- **Transfer Learning**: Глобальное предобучение + персональное дообучение
+- **Адаптивный Learning Rate**: Автоматическая настройка в зависимости от объёма данных пациента
+- **Focal Loss**: Улучшенная работа с дисбалансом классов (preictal << interictal)
+- **Отбраковка артефактов**: Автоматическое удаление зашумлённых окон
+- **Персонализированные пороги**: Поиск оптимального порога для каждого пациента
 
-## Project Structure
+## Структура проекта
 
 ```
 epilepsy/
 ├── config/
-│   └── default.yaml          # Configuration parameters
+│   └── default.yaml          # Параметры конфигурации
 ├── src/
 │   ├── data/
-│   │   ├── index_builder.py  # Build seizure/file indices from CHB-MIT
-│   │   ├── labeling.py       # Label windows (preictal/interictal)
-│   │   ├── preprocessing.py  # EDF loading, filtering, resampling
-│   │   └── segmentation.py   # Sliding window segmentation
+│   │   ├── index_builder.py  # Построение индексов приступов/файлов из CHB-MIT
+│   │   ├── labeling.py       # Разметка окон (preictal/interictal)
+│   │   ├── preprocessing.py  # Загрузка EDF, фильтрация, ресемплинг
+│   │   └── segmentation.py   # Сегментация скользящим окном
 │   ├── features/
-│   │   └── extractor.py      # PSD, statistical, Hjorth, entropy features
+│   │   └── extractor.py      # Извлечение признаков: PSD, статистика, Hjorth, энтропия
 │   ├── models/
-│   │   ├── classifier.py     # Traditional ML classifiers (RF, XGB, SVM)
-│   │   └── deep_model.py     # CNN-LSTM with attention, Focal Loss, MAML
+│   │   ├── classifier.py     # Классические ML-классификаторы (RF, XGB, SVM)
+│   │   └── deep_model.py     # CNN-LSTM с attention, Focal Loss, MAML
 │   ├── evaluation/
-│   │   ├── alarm_logic.py    # Alarm generation with smoothing
-│   │   └── metrics.py        # Sensitivity, FA/24h, event-based metrics
-│   ├── pipeline.py           # Traditional ML pipeline
-│   └── pipeline_transfer.py  # Transfer Learning pipeline
-├── run.py                    # Run traditional ML pipeline
-├── run_transfer.py           # Run Transfer Learning pipeline
-└── requirements.txt          # Python dependencies
+│   │   ├── alarm_logic.py    # Генерация тревог со сглаживанием
+│   │   └── metrics.py        # Метрики: Sensitivity, FA/24h, event-based
+│   ├── pipeline.py           # Пайплайн классического ML
+│   └── pipeline_transfer.py  # Пайплайн Transfer Learning
+├── run.py                    # Запуск классического ML пайплайна
+├── run_transfer.py           # Запуск Transfer Learning пайплайна
+└── requirements.txt          # Python зависимости
 ```
 
-## Installation
+## Установка
 
 ```bash
-# Create virtual environment
+# Создание виртуального окружения
 python -m venv .venv
 .venv\Scripts\activate  # Windows
 # source .venv/bin/activate  # Linux/Mac
 
-# Install dependencies
+# Установка зависимостей
 pip install -r requirements.txt
 
-# For GPU support (recommended)
+# Для поддержки GPU (рекомендуется)
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
 ```
 
-## Data
+## Данные
 
-This project uses the **CHB-MIT Scalp EEG Database**:
-- 24 patients with intractable seizures
-- 844 hours of continuous EEG recordings
-- 198 seizures annotated
+Проект использует базу данных **CHB-MIT Scalp EEG Database**:
+- 24 пациента с фармакорезистентной эпилепсией
+- 844 часа непрерывных записей ЭЭГ
+- 198 размеченных приступов
 
-Download from: https://physionet.org/content/chbmit/1.0.0/
+Скачать: https://physionet.org/content/chbmit/1.0.0/
 
-Place data in the path specified in `config/default.yaml`:
+Укажите путь к данным в `config/default.yaml`:
 ```yaml
 paths:
-  data_root: "path/to/chbmit/1.0.0"
+  data_root: "путь/к/chbmit/1.0.0"
 ```
 
-## Usage
+## Использование
 
-### Transfer Learning Pipeline (Recommended)
+### Transfer Learning пайплайн (рекомендуется)
 
 ```bash
-# Full pipeline with train/test split
+# Полный пайплайн с разделением train/test
 python run_transfer.py --config config/default.yaml
 
-# Specific patients only
+# Только определённые пациенты
 python run_transfer.py --patients chb01 chb02 chb03
 
-# Resume from pretrained model
+# Продолжить с предобученной модели
 python run_transfer.py --resume
 ```
 
-### Traditional ML Pipeline
+### Классический ML пайплайн
 
 ```bash
 python run.py --config config/default.yaml --patients chb01 chb02
 ```
 
-## Configuration
+## Конфигурация
 
-Key parameters in `config/default.yaml`:
+Ключевые параметры в `config/default.yaml`:
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `timing.sph` | 60s | Seizure Prediction Horizon |
-| `timing.preictal_duration` | 1800s | Preictal period (30 min) |
-| `windowing.window_length` | 4s | EEG window size |
-| `deep_learning.pretrain_epochs` | 30 | Global model epochs |
-| `deep_learning.finetune_epochs` | 20 | Patient fine-tuning epochs |
-| `deep_learning.use_focal_loss` | true | Use Focal Loss for imbalance |
+| Параметр | По умолчанию | Описание |
+|----------|--------------|----------|
+| `timing.sph` | 60 сек | Seizure Prediction Horizon — минимальный запас до начала приступа |
+| `timing.preictal_duration` | 1800 сек | Длительность preictal периода (30 мин) |
+| `windowing.window_length` | 4 сек | Размер окна ЭЭГ |
+| `deep_learning.pretrain_epochs` | 30 | Эпохи предобучения глобальной модели |
+| `deep_learning.finetune_epochs` | 20 | Эпохи дообучения на пациенте |
+| `deep_learning.use_focal_loss` | true | Использовать Focal Loss для дисбаланса классов |
 
-## Model Architecture
+## Архитектура модели
 
 ```
-Input: (batch, 17 channels, 1024 samples)
+Вход: (batch, 17 каналов, 1024 отсчёта)
     ↓
 CNN Block 1: Conv1d(17→32) + BatchNorm + ReLU + MaxPool
 CNN Block 2: Conv1d(32→64) + BatchNorm + ReLU + MaxPool  
 CNN Block 3: Conv1d(64→128) + BatchNorm + ReLU + MaxPool
     ↓
-LSTM: 2 layers, hidden=64, bidirectional
+LSTM: 2 слоя, hidden=64, bidirectional
     ↓
-Attention: Self-attention over time steps
+Attention: Self-attention по временным шагам
     ↓
 FC: 64 → 1 (sigmoid)
     ↓
-Output: P(preictal)
+Выход: P(preictal)
 ```
 
-## Results
+## Результаты
 
-### Latest Run (24 patients)
+### Последний запуск (24 пациента)
 
-| Group | Patients | Seizures | Detected | Sensitivity | Mean FA/24h |
-|-------|----------|----------|----------|-------------|-------------|
+| Группа | Пациентов | Приступов | Обнаружено | Sensitivity | Mean FA/24h |
+|--------|-----------|-----------|------------|-------------|-------------|
 | TRAIN | 19 | 182 | 117 | 64.3% | 45.27 |
 | TEST | 5 | 16 | 13 | **81.2%** | 34.31 |
 
-**Best performers:**
+**Лучшие результаты:**
 - chb02: Sensitivity=100%, FA/24h=0.00, AUC=0.877
 - chb10: Sensitivity=100%, FA/24h=0.00, AUC=0.777
 - chb11 (TEST): Sensitivity=100%, FA/24h=2.92, AUC=0.776
 
-## Evaluation Metrics
+## Метрики оценки
 
-- **Sensitivity**: % of seizures with at least one alarm in prediction window
-- **FA/24h**: False alarms per 24 hours of recording
-- **AUC**: Area under ROC curve (window-level classification)
+- **Sensitivity (чувствительность)**: % приступов с хотя бы одной тревогой в окне предсказания
+- **FA/24h**: Ложные тревоги за 24 часа записи
+- **AUC**: Площадь под ROC-кривой (классификация на уровне окон)
 
-Prediction window: `[onset - SOP, onset - SPH]` = `[onset - 10min, onset - 1min]`
+Окно предсказания: `[onset - SOP, onset - SPH]` = `[onset - 10мин, onset - 1мин]`
 
-## Known Issues
+## Известные проблемы
 
-Some patients show poor performance due to:
-- **Atypical seizure patterns** (chb15: 0% sensitivity with 20 seizures)
-- **Insufficient data** (chb18: only 1 file)
-- **High inter-seizure variability** (chb12: 40 seizures, 47.5% sensitivity)
+Некоторые пациенты показывают низкие результаты из-за:
+- **Атипичные паттерны приступов** (chb15: 0% sensitivity при 20 приступах)
+- **Недостаточно данных** (chb18: только 1 файл)
+- **Высокая вариабельность между приступами** (chb12: 40 приступов, 47.5% sensitivity)
 
-## Future Improvements
+## Планы по улучшению
 
-- [ ] Multi-task learning across patients
-- [ ] Seizure type classification
-- [ ] Online learning / adaptation
-- [ ] Reduce false alarm rate with post-processing
-- [ ] Add more entropy-based features
+- [ ] Multi-task learning между пациентами
+- [ ] Классификация типов приступов
+- [ ] Online learning / адаптация в реальном времени
+- [ ] Снижение FA/24h с помощью постобработки
+- [ ] Добавление энтропийных признаков
 
-## References
+## Ссылки
 
 1. CHB-MIT Database: Shoeb, A. H. (2009). Application of machine learning to epileptic seizure onset detection and treatment.
 2. Focal Loss: Lin, T. Y., et al. (2017). Focal loss for dense object detection.
 
-## License
+## Лицензия
 
 MIT License
