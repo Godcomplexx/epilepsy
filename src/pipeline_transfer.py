@@ -190,7 +190,10 @@ def process_patient_for_dl(
                 bandpass_high=config['preprocessing']['bandpass_high'],
                 notch_freq=config['preprocessing']['notch_freq']
             )
-            raw_data, sfreq, channels_out = result[0], result[1], result[2]
+            raw_data, sfreq, channels_out, qc = result[0], result[1], result[2], result[3]
+            if qc['flat_ratio'] > config['qc']['max_flat_ratio']:
+                logger.warning(f"  Skip {edf_path.name}: flat_ratio={qc['flat_ratio']} > {config['qc']['max_flat_ratio']}")
+                continue
         except Exception as e:
             logger.warning(f"Failed to process {edf_path}: {e}")
             continue

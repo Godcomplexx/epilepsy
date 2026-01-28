@@ -3,8 +3,8 @@
 
 # === Paths ===
 paths:
-  data_root: "e:/epilepsy/files/chbmit/1.0.0"
-  output_dir: "e:/epilepsy/outputs"
+  data_root: C:\Users\_\Desktop\IT\epilepsy\files\chbmit\1.0.0
+  output_dir: C:\Users\_\Desktop\IT\epilepsy\outputs
 
 # === Timing Parameters (seconds) ===
 timing:
