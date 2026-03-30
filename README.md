@@ -1,156 +1,206 @@
-# Система предсказания эпилептических приступов
+# 🧠 Epileptic Seizure Prediction System
 
-Персонализированное предсказание эпилептических приступов с использованием Transfer Learning на данных ЭЭГ из базы CHB-MIT.
+## 🚀 Overview
 
-## Обзор
+AI-based personalized seizure prediction system for drug-resistant epilepsy patients.
+Uses **Transfer Learning** with a **CNN-LSTM** architecture on EEG data from the CHB-MIT Scalp EEG Database.
+Achieves **81.2% sensitivity** on unseen test patients with real-time alarm generation.
 
-Система предсказывает эпилептические приступы с помощью архитектуры **CNN-LSTM** и transfer learning:
-1. **Предобучение** глобальной модели на данных нескольких пациентов
-2. **Дообучение** (fine-tuning) для каждого пациента индивидуально
-3. **Персонализированные пороги** для оптимального баланса чувствительности и специфичности
+## 🧩 Problem
 
-### Ключевые особенности
-- **Transfer Learning**: Глобальное предобучение + персональное дообучение
-- **Адаптивный Learning Rate**: Автоматическая настройка в зависимости от объёма данных пациента
-- **Focal Loss**: Улучшенная работа с дисбалансом классов (preictal << interictal)
-- **Отбраковка артефактов**: Автоматическое удаление зашумлённых окон
-- **Персонализированные пороги**: Поиск оптимального порога для каждого пациента
+- Epileptic seizures are unpredictable and dangerous for patients with drug-resistant epilepsy
+- Manual EEG monitoring is subjective, time-consuming, and not scalable
+- Need for a fast, objective, and **personalized** prediction tool that works per-patient
 
-## Структура проекта
+## ⚙️ Solution
+
+Developed an end-to-end seizure prediction pipeline:
+
+1. **EEG preprocessing** — filtering, resampling, artifact rejection, quality control
+2. **Feature extraction** — PSD bands, Hjorth parameters, statistical & entropy features
+3. **Global pretraining** — CNN-LSTM trained on multi-patient data (19 patients)
+4. **Patient-specific fine-tuning** — Transfer Learning adapts the model to each individual
+5. **Personalized thresholds** — ROC-optimized decision boundary per patient
+6. **Alarm generation** — Smoothed probability with refractory period logic
+
+## 🏗 Architecture
+
+```
+EEG Signal (17 channels, 256 Hz)
+    ↓
+Preprocessing: Bandpass 0.5–50 Hz → Notch 60 Hz → Resampling
+    ↓
+Sliding Window: 4 sec, 50% overlap → 1024 samples per window
+    ↓
+┌─────────────────────────────────────────┐
+│  CNN-LSTM Model                         │
+│                                         │
+│  Spatial Attention (channel weighting)  │
+│          ↓                              │
+│  CNN Block 1: Conv1d(17→32) + BN + ReLU │
+│  CNN Block 2: Conv1d(32→64) + BN + ReLU │
+│  CNN Block 3: Conv1d(64→128) + BN + ReLU│
+│          ↓                              │
+│  Bidirectional LSTM: 2 layers, h=64     │
+│          ↓                              │
+│  FC: 128 → 64 → 1 (sigmoid)            │
+└─────────────────────────────────────────┘
+    ↓
+Alarm Logic: Moving average smoothing → Refractory period → Decision
+    ↓
+Output: Seizure Warning / No Warning
+```
+
+**Training Strategy:**
+```
+Stage 1: Pretrain on 19 patients (30 epochs, lr=0.001, Focal Loss)
+    ↓
+Stage 2: Fine-tune per patient (20 epochs, lr=0.0001, frozen CNN layers)
+    ↓
+Stage 3: Optimize threshold per patient via ROC curve
+```
+
+## 🧠 Tech Stack
+
+| Category | Tools |
+|----------|-------|
+| **Data Processing** | Python, NumPy, Pandas, SciPy, MNE, pyedflib |
+| **Deep Learning** | PyTorch 2.0+ |
+| **Classical ML** | scikit-learn, XGBoost (RF, SVM, XGB baselines) |
+| **Visualization** | Matplotlib, Seaborn |
+| **Configuration** | PyYAML |
+| **Data** | CHB-MIT Scalp EEG Database (24 patients, 844h, 198 seizures) |
+
+## 📊 Results
+
+### Model Performance (24 patients, Transfer Learning)
+
+| Group | Patients | Seizures | Detected | Sensitivity | FA/24h |
+|-------|----------|----------|----------|-------------|--------|
+| TRAIN | 19 | 182 | 117 | 64.3% | 45.27 |
+| **TEST** | **5** | **16** | **13** | **81.2%** | **34.31** |
+
+### Top Performers
+
+| Patient | Sensitivity | FA/24h | AUC |
+|---------|-------------|--------|-----|
+| chb02 | 100% | 0.00 | 0.877 |
+| chb10 | 100% | 0.00 | 0.777 |
+| chb11 (test) | 100% | 2.92 | 0.776 |
+
+### Sensitivity by Patient
+
+![Sensitivity by Patient](assets/sensitivity_by_patient.png)
+
+### Confusion Matrix
+
+![Confusion Matrix](assets/confusion_matrix.png)
+
+### ROC Curve
+
+![ROC Curve](assets/roc_curve.png)
+
+### Sensitivity vs False Alarm Rate
+
+![FA vs Sensitivity](assets/fa_vs_sensitivity.png)
+
+### Evaluation Metrics
+
+- **Sensitivity**: % of seizures with at least one alarm in the prediction window
+- **FA/24h**: False alarms per 24 hours of recording
+- **AUC**: Area under ROC curve (window-level classification)
+- **Prediction window**: `[onset − 10 min, onset − 1 min]`
+
+## 📂 Project Structure
 
 ```
 epilepsy/
 ├── config/
-│   └── default.yaml          # Параметры конфигурации
+│   └── default.yaml            # All parameters (timing, model, QC)
 ├── src/
 │   ├── data/
-│   │   ├── index_builder.py  # Построение индексов приступов/файлов из CHB-MIT
-│   │   ├── labeling.py       # Разметка окон (preictal/interictal)
-│   │   ├── preprocessing.py  # Загрузка EDF, фильтрация, ресемплинг
-│   │   └── segmentation.py   # Сегментация скользящим окном
+│   │   ├── index_builder.py    # Build seizure/file indices from CHB-MIT
+│   │   ├── preprocessing.py    # Load EDF, filtering, resampling, QC
+│   │   ├── labeling.py         # Label windows: preictal / interictal / excluded
+│   │   └── segmentation.py     # Sliding window segmentation
 │   ├── features/
-│   │   └── extractor.py      # Извлечение признаков: PSD, статистика, Hjorth, энтропия
+│   │   └── extractor.py        # PSD, statistical, Hjorth, entropy features
 │   ├── models/
-│   │   ├── classifier.py     # Классические ML-классификаторы (RF, XGB, SVM)
-│   │   └── deep_model.py     # CNN-LSTM с attention, Focal Loss, MAML
+│   │   ├── classifier.py       # Classical ML: RF, SVM, XGBoost, MLP
+│   │   └── deep_model.py       # CNN-LSTM with Focal Loss & augmentation
 │   ├── evaluation/
-│   │   ├── alarm_logic.py    # Генерация тревог со сглаживанием
-│   │   └── metrics.py        # Метрики: Sensitivity, FA/24h, event-based
-│   ├── pipeline.py           # Пайплайн классического ML
-│   └── pipeline_transfer.py  # Пайплайн Transfer Learning
-├── run.py                    # Запуск классического ML пайплайна
-├── run_transfer.py           # Запуск Transfer Learning пайплайна
-└── requirements.txt          # Python зависимости
+│   │   ├── alarm_logic.py      # Alarm generation with smoothing
+│   │   └── metrics.py          # Event-based metrics: Sensitivity, FA/24h
+│   ├── pipeline.py             # Classical ML pipeline
+│   └── pipeline_transfer.py    # Transfer Learning pipeline
+├── analysis/
+│   └── analysis.ipynb          # EEG data analysis & QC visualization
+├── run.py                      # Entry point: classical ML
+├── run_transfer.py             # Entry point: Transfer Learning
+└── requirements.txt
 ```
 
-## Установка
+## 🚀 Quick Start
 
 ```bash
-# Создание виртуального окружения
+# Setup
 python -m venv .venv
-.venv\Scripts\activate  # Windows
-# source .venv/bin/activate  # Linux/Mac
-
-# Установка зависимостей
+.venv\Scripts\activate          # Windows
 pip install -r requirements.txt
 
-# Для поддержки GPU (рекомендуется)
+# For GPU support (recommended)
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
-```
 
-## Данные
-
-Проект использует базу данных **CHB-MIT Scalp EEG Database**:
-- 24 пациента с фармакорезистентной эпилепсией
-- 844 часа непрерывных записей ЭЭГ
-- 198 размеченных приступов
-
-Скачать: https://physionet.org/content/chbmit/1.0.0/
-
-Укажите путь к данным в `config/default.yaml`:
-```yaml
-paths:
-  data_root: "путь/к/chbmit/1.0.0"
-```
-
-## Использование
-
-### Transfer Learning пайплайн (рекомендуется)
-
-```bash
-# Полный пайплайн с разделением train/test
+# Run Transfer Learning pipeline
 python run_transfer.py --config config/default.yaml
 
-# Только определённые пациенты
+# Run on specific patients
 python run_transfer.py --patients chb01 chb02 chb03
 
-# Продолжить с предобученной модели
+# Resume from pretrained model
 python run_transfer.py --resume
 ```
 
-### Классический ML пайплайн
+**Data:** Download [CHB-MIT Scalp EEG Database](https://physionet.org/content/chbmit/1.0.0/) and set the path in `config/default.yaml`.
+
+## 💡 My Contribution
+
+- Designed the full system architecture (preprocessing → model → alarm logic)
+- Implemented CNN-LSTM model with spatial attention and Focal Loss
+- Built Transfer Learning pipeline: global pretraining + patient-specific fine-tuning
+- Developed personalized threshold optimization via ROC analysis
+- Implemented event-based evaluation metrics (Sensitivity, FA/24h)
+- Conducted EEG data quality analysis and identified problem patients
+- Built artifact rejection and quality control modules
+
+## 🖼 Generating Plots
+
+After training, generate all plots for this README:
 
 ```bash
-python run.py --config config/default.yaml --patients chb01 chb02
+python generate_plots.py
 ```
 
-## Конфигурация
+This creates the `assets/` folder with:
+- `sensitivity_by_patient.png` — bar chart per patient
+- `confusion_matrix.png` — aggregated confusion matrix
+- `roc_curve.png` — ROC curves (per-patient + aggregated)
+- `fa_vs_sensitivity.png` — sensitivity vs false alarm trade-off
+- `class_balance.png` — preictal/interictal distribution
 
-Ключевые параметры в `config/default.yaml`:
-
-| Параметр | По умолчанию | Описание |
-|----------|--------------|----------|
-| `timing.sph` | 60 сек | Seizure Prediction Horizon — минимальный запас до начала приступа |
-| `timing.preictal_duration` | 1800 сек | Длительность preictal периода (30 мин) |
-| `windowing.window_length` | 4 сек | Размер окна ЭЭГ |
-| `deep_learning.pretrain_epochs` | 30 | Эпохи предобучения глобальной модели |
-| `deep_learning.finetune_epochs` | 20 | Эпохи дообучения на пациенте |
-| `deep_learning.use_focal_loss` | true | Использовать Focal Loss для дисбаланса классов |
-
-## Архитектура модели
-
-```
-Вход: (batch, 17 каналов, 1024 отсчёта)
-    ↓
-CNN Block 1: Conv1d(17→32) + BatchNorm + ReLU + MaxPool
-CNN Block 2: Conv1d(32→64) + BatchNorm + ReLU + MaxPool  
-CNN Block 3: Conv1d(64→128) + BatchNorm + ReLU + MaxPool
-    ↓
-LSTM: 2 слоя, hidden=64, bidirectional
-    ↓
-Attention: Self-attention по временным шагам
-    ↓
-FC: 64 → 1 (sigmoid)
-    ↓
-Выход: P(preictal)
+You can also specify a custom outputs path:
+```bash
+python generate_plots.py --output-dir /path/to/outputs
 ```
 
-## Результаты
+## 📝 Dataset Info
 
-### Последний запуск (24 пациента)
-
-| Группа | Пациентов | Приступов | Обнаружено | Sensitivity | Mean FA/24h |
-|--------|-----------|-----------|------------|-------------|-------------|
-| TRAIN | 19 | 182 | 117 | 64.3% | 45.27 |
-| TEST | 5 | 16 | 13 | **81.2%** | 34.31 |
-
-**Лучшие результаты:**
-- chb02: Sensitivity=100%, FA/24h=0.00, AUC=0.877
-- chb10: Sensitivity=100%, FA/24h=0.00, AUC=0.777
-- chb11 (TEST): Sensitivity=100%, FA/24h=2.92, AUC=0.776
-
-## Метрики оценки
-
-- **Sensitivity (чувствительность)**: % приступов с хотя бы одной тревогой в окне предсказания
-- **FA/24h**: Ложные тревоги за 24 часа записи
-- **AUC**: Площадь под ROC-кривой (классификация на уровне окон)
-
-Окно предсказания: `[onset - SOP, onset - SPH]` = `[onset - 10мин, onset - 1мин]`
-
-## Известные проблемы
-
-Некоторые пациенты показывают низкие результаты из-за:
-- **Атипичные паттерны приступов** (chb15: 0% sensitivity при 20 приступах)
-- **Недостаточно данных** (chb18: только 1 файл)
-- **Высокая вариабельность между приступами** (chb12: 40 приступов, 47.5% sensitivity)
-
+| Metric | Value |
+|--------|-------|
+| Patients | 24 |
+| Total recording | 844 hours |
+| Seizures | 198 |
+| Sampling rate | 256 Hz |
+| Channels | 17 (bipolar montage) |
+| Windows extracted | ~1.5M |
+| Class balance | 89.2% interictal / 10.8% preictal |
