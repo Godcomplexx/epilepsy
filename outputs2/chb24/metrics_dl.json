@@ -1,0 +1,10 @@
+{
+  "sensitivity": 0.9333333333333333,
+  "n_detected": 14,
+  "n_seizures": 15,
+  "n_alarms": 1,
+  "fa_per_24h": 0.0,
+  "total_hours": 4.371111111111111,
+  "optimal_threshold": 0.1,
+  "threshold_f1": 1.0
+}
