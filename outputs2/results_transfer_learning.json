@@ -1,0 +1,218 @@
+{
+  "chb01": {
+    "n_seizures": 7,
+    "n_windows": 65710,
+    "n_preictal": 4714,
+    "sensitivity": 1.0,
+    "fa_per_24h": 0.0,
+    "finetune_val_auc": 0.524213354322167,
+    "is_test": false
+  },
+  "chb02": {
+    "n_seizures": 3,
+    "n_windows": 61140,
+    "n_preictal": 1773,
+    "sensitivity": 1.0,
+    "fa_per_24h": 0.0,
+    "finetune_val_auc": 0.49897633109473727,
+    "is_test": false
+  },
+  "chb03": {
+    "n_seizures": 7,
+    "n_windows": 59882,
+    "n_preictal": 4110,
+    "sensitivity": 1.0,
+    "fa_per_24h": 0.0,
+    "finetune_val_auc": 0.48616376914377724,
+    "is_test": false
+  },
+  "chb04": {
+    "n_seizures": 4,
+    "n_windows": 264313,
+    "n_preictal": 2617,
+    "sensitivity": 1.0,
+    "fa_per_24h": 0.0,
+    "finetune_val_auc": 0.4855598712277037,
+    "is_test": false
+  },
+  "chb05": {
+    "n_seizures": 5,
+    "n_windows": 64468,
+    "n_preictal": 3297,
+    "sensitivity": 1.0,
+    "fa_per_24h": 0.0,
+    "finetune_val_auc": 0.5167603223587391,
+    "is_test": false
+  },
+  "chb06": {
+    "n_seizures": 10,
+    "n_windows": 80773,
+    "n_preictal": 7269,
+    "sensitivity": 1.0,
+    "fa_per_24h": 0.0,
+    "finetune_val_auc": 0.5148656948745296,
+    "is_test": false
+  },
+  "chb07": {
+    "n_seizures": 3,
+    "n_windows": 107018,
+    "n_preictal": 2609,
+    "sensitivity": 1.0,
+    "fa_per_24h": 0.0,
+    "finetune_val_auc": 0.5285752237359782,
+    "is_test": false
+  },
+  "chb08": {
+    "n_seizures": 5,
+    "n_windows": 31344,
+    "n_preictal": 4348,
+    "sensitivity": 1.0,
+    "fa_per_24h": 0.0,
+    "finetune_val_auc": 0.4932233217710671,
+    "is_test": false
+  },
+  "chb09": {
+    "n_seizures": 4,
+    "n_windows": 108377,
+    "n_preictal": 3477,
+    "sensitivity": 1.0,
+    "fa_per_24h": 0.0,
+    "finetune_val_auc": 0.5231744986315948,
+    "is_test": false
+  },
+  "chb10": {
+    "n_seizures": 7,
+    "n_windows": 70669,
+    "n_preictal": 5877,
+    "sensitivity": 1.0,
+    "fa_per_24h": 0.0,
+    "finetune_val_auc": 0.5217724620475385,
+    "is_test": false
+  },
+  "chb11": {
+    "n_seizures": 3,
+    "n_windows": 59250,
+    "n_preictal": 1683,
+    "sensitivity": 1.0,
+    "fa_per_24h": 0.0,
+    "finetune_val_auc": 0.48541911469803906,
+    "is_test": false
+  },
+  "chb12": {
+    "n_seizures": 27,
+    "n_windows": 25246,
+    "n_preictal": 5449,
+    "sensitivity": 0.7037037037037037,
+    "fa_per_24h": 0.0,
+    "finetune_val_auc": 0.49761223220550577,
+    "is_test": false
+  },
+  "chb13": {
+    "n_seizures": 12,
+    "n_windows": 48987,
+    "n_preictal": 4012,
+    "sensitivity": 0.8333333333333334,
+    "fa_per_24h": 0.0,
+    "finetune_val_auc": 0.4853227822563579,
+    "is_test": false
+  },
+  "chb14": {
+    "n_seizures": 8,
+    "n_windows": 39671,
+    "n_preictal": 5490,
+    "sensitivity": 0.875,
+    "fa_per_24h": 0.0,
+    "finetune_val_auc": 0.5030697273961816,
+    "is_test": false
+  },
+  "chb15": {
+    "n_seizures": 20,
+    "n_windows": 53476,
+    "n_preictal": 6701,
+    "sensitivity": 0.7,
+    "fa_per_24h": 0.0,
+    "finetune_val_auc": 0.5028595172707139,
+    "is_test": false
+  },
+  "chb16": {
+    "n_seizures": 10,
+    "n_windows": 26596,
+    "n_preictal": 3209,
+    "sensitivity": 0.6,
+    "fa_per_24h": 0.0,
+    "finetune_val_auc": 0.5030690753422139,
+    "is_test": false
+  },
+  "chb17": {
+    "n_seizures": 3,
+    "n_windows": 34991,
+    "n_preictal": 2609,
+    "sensitivity": 1.0,
+    "fa_per_24h": 0.0,
+    "finetune_val_auc": 0.490283448233267,
+    "is_test": false
+  },
+  "chb18": {
+    "n_seizures": 6,
+    "n_windows": 57892,
+    "n_preictal": 3917,
+    "sensitivity": 1.0,
+    "fa_per_24h": 0.0,
+    "finetune_val_auc": 0.49920663950365773,
+    "is_test": false
+  },
+  "chb19": {
+    "n_seizures": 3,
+    "n_windows": 50430,
+    "n_preictal": 1857,
+    "sensitivity": 1.0,
+    "fa_per_24h": 0.0,
+    "finetune_val_auc": 0.512335618381603,
+    "is_test": false
+  },
+  "chb20": {
+    "n_seizures": 8,
+    "n_windows": 42915,
+    "n_preictal": 3273,
+    "sensitivity": 0.75,
+    "fa_per_24h": 0.0,
+    "finetune_val_auc": 0.5540078159953362,
+    "is_test": false
+  },
+  "chb21": {
+    "n_seizures": 4,
+    "n_windows": 55390,
+    "n_preictal": 3220,
+    "sensitivity": 1.0,
+    "fa_per_24h": 0.0,
+    "finetune_val_auc": 0.5274234950883722,
+    "is_test": false
+  },
+  "chb22": {
+    "n_seizures": 3,
+    "n_windows": 52715,
+    "n_preictal": 2338,
+    "sensitivity": 1.0,
+    "fa_per_24h": 0.0,
+    "finetune_val_auc": 0.5063726107906772,
+    "is_test": false
+  },
+  "chb23": {
+    "n_seizures": 7,
+    "n_windows": 35280,
+    "n_preictal": 3609,
+    "sensitivity": 0.7142857142857143,
+    "fa_per_24h": 0.0,
+    "finetune_val_auc": 0.490238836398711,
+    "is_test": false
+  },
+  "chb24": {
+    "n_seizures": 15,
+    "n_windows": 7868,
+    "n_preictal": 7868,
+    "sensitivity": 0.9333333333333333,
+    "fa_per_24h": 0.0,
+    "finetune_val_auc": NaN,
+    "is_test": false
+  }
+}

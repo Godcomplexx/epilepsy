@@ -180,7 +180,7 @@ def process_patient_for_dl(
         if not edf_path.exists():
             continue
         
-        # Preprocess
+        # Preprocessну с
         try:
             result = preprocess_edf(
                 edf_path,
@@ -500,7 +500,21 @@ def run_transfer_learning_pipeline(
         )
         
         # Compute simple metrics
-        patient_seizures = seizure_index[seizure_index['patient'] == patient_id]
+        # Get list of files that were actually processed (passed QC)
+        processed_files = windows_df['edf_file'].unique()
+        
+        # Filter seizures: only count seizures from files that were successfully processed
+        all_patient_seizures = seizure_index[seizure_index['patient'] == patient_id]
+        patient_seizures = all_patient_seizures[all_patient_seizures['edf_file'].isin(processed_files)]
+        
+        # Log if any seizures were excluded due to QC failures
+        n_excluded = len(all_patient_seizures) - len(patient_seizures)
+        if n_excluded > 0:
+            excluded_files = set(all_patient_seizures['edf_file']) - set(processed_files)
+            logger.warning(
+                f"    {patient_id}: {n_excluded} seizures excluded (files failed QC or missing channels): "
+                f"{', '.join(sorted(excluded_files))}"
+            )
         
         # Simple event-based metrics
         n_seizures = len(patient_seizures)
