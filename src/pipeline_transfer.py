@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 import json
+import gc
 
 import numpy as np
 import pandas as pd
@@ -142,6 +143,63 @@ def compute_entropy_for_windows(X: np.ndarray, sfreq: float = 256.0) -> np.ndarr
         entropy_features[i] = compute_entropy_features(X[i], sfreq)
     
     return entropy_features
+
+
+def sample_patient_for_pretraining(
+    X: np.ndarray,
+    y: np.ndarray,
+    target_samples: int,
+    rng: np.random.Generator
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Subsample patient windows while preserving class balance as much as possible.
+    """
+    n_samples = len(y)
+    if target_samples >= n_samples:
+        return X, y
+    if target_samples <= 0:
+        raise ValueError("target_samples must be > 0")
+
+    pos_idx = np.where(y >= 0.5)[0]
+    neg_idx = np.where(y < 0.5)[0]
+
+    # Fallback: single-class patient data
+    if len(pos_idx) == 0 or len(neg_idx) == 0:
+        selected = rng.choice(n_samples, size=target_samples, replace=False)
+        return X[selected], y[selected]
+
+    pos_ratio = len(pos_idx) / n_samples
+    n_pos = int(round(target_samples * pos_ratio))
+    n_pos = min(max(n_pos, 0), len(pos_idx))
+    n_neg = target_samples - n_pos
+    n_neg = min(max(n_neg, 0), len(neg_idx))
+
+    # Fill missing quota if one class hit availability limit
+    used = n_pos + n_neg
+    if used < target_samples:
+        remaining = target_samples - used
+        pos_room = len(pos_idx) - n_pos
+        add_pos = min(remaining, pos_room)
+        n_pos += add_pos
+        remaining -= add_pos
+
+        neg_room = len(neg_idx) - n_neg
+        add_neg = min(remaining, neg_room)
+        n_neg += add_neg
+
+    # Guarantee at least one sample from each class when possible
+    if target_samples > 1:
+        if n_pos == 0 and len(pos_idx) > 0 and n_neg > 1:
+            n_pos, n_neg = 1, target_samples - 1
+        elif n_neg == 0 and len(neg_idx) > 0 and n_pos > 1:
+            n_neg, n_pos = 1, target_samples - 1
+
+    selected_pos = rng.choice(pos_idx, size=n_pos, replace=False) if n_pos > 0 else np.array([], dtype=np.int64)
+    selected_neg = rng.choice(neg_idx, size=n_neg, replace=False) if n_neg > 0 else np.array([], dtype=np.int64)
+    selected = np.concatenate([selected_pos, selected_neg])
+    rng.shuffle(selected)
+
+    return X[selected], y[selected]
 
 
 def process_patient_for_dl(
@@ -324,47 +382,64 @@ def run_transfer_learning_pipeline(
     
     logger.info(f"Processing {len(patients)} patients total")
     
-    # Step 2: Load data for all patients (with disk caching)
-    logger.info("Step 2: Loading and preprocessing data for all patients")
-    patient_data = {}
-    patient_windows = {}
+    # Step 2: Build/validate disk cache (do not keep all patient arrays in RAM)
+    logger.info("Step 2: Preparing disk cache for all patients")
     
     cache_dir = output_dir / "preprocessed_data"
     cache_dir.mkdir(parents=True, exist_ok=True)
+    patient_cache = {}
     
     for patient_id in patients:
         cache_file = cache_dir / f"{patient_id}_data.npz"
         windows_cache = cache_dir / f"{patient_id}_windows.csv"
         
         if cache_file.exists() and windows_cache.exists():
-            # Load from cache
-            logger.info(f"  {patient_id}: Loading from cache")
-            cached = np.load(cache_file)
-            X = cached['X']
-            y = cached['y']
-            windows_df = pd.read_csv(windows_cache)
+            logger.info(f"  {patient_id}: Cache ready")
         else:
-            # Process and save to cache
+            # Process and persist to cache
             result = process_patient_for_dl(patient_id, config, seizure_index, file_index)
             if result is None:
                 continue
             X, y, windows_df = result
             
-            # Save to cache
             np.savez_compressed(cache_file, X=X, y=y)
             windows_df.to_csv(windows_cache, index=False)
             logger.info(f"  {patient_id}: Saved to cache")
-        
-        patient_data[patient_id] = (X, y)
-        patient_windows[patient_id] = windows_df
-    
-    if not patient_data:
-        logger.error("No patient data loaded!")
+
+            # Explicit cleanup after cache write
+            del X, y, windows_df
+            gc.collect()
+
+        if cache_file.exists() and windows_cache.exists():
+            patient_cache[patient_id] = (cache_file, windows_cache)
+
+    if not patient_cache:
+        logger.error("No patient data available in cache!")
         return {}
+
+    unavailable = [p for p in patients if p not in patient_cache]
+    if unavailable:
+        logger.warning(f"Skipping patients without cache/data: {unavailable}")
+
+    # Keep deterministic order while filtering to available patients
+    patients = [p for p in patients if p in patient_cache]
+    train_patients = [p for p in train_patients if p in patient_cache]
+    test_patients = [p for p in test_patients if p in patient_cache]
     
     # Step 3: Pretrain global model on TRAIN patients only
-    n_channels = list(patient_data.values())[0][0].shape[1]
-    n_timepoints = list(patient_data.values())[0][0].shape[2]
+    selected_channels = config.get('channels', {}).get('selected', [])
+    if selected_channels:
+        n_channels = len(selected_channels)
+    else:
+        # Fallback: infer channel count from one cached patient
+        ref_patient = patients[0]
+        ref_cache_file, _ = patient_cache[ref_patient]
+        with np.load(ref_cache_file) as cached_ref:
+            ref_X = cached_ref['X']
+            n_channels = ref_X.shape[1]
+
+    n_timepoints = int(config['windowing']['window_length'] * config['preprocessing']['target_sfreq'])
+
     pretrained_model_path = output_dir / "pretrained_model.pt"
     
     if resume and pretrained_model_path.exists():
@@ -374,9 +449,67 @@ def run_transfer_learning_pipeline(
         global_model.load(pretrained_model_path)
     else:
         logger.info("Step 3: Pretraining global CNN-LSTM model on TRAIN patients")
-        
-        # Filter to train patients only for pretraining
-        train_data = {p: patient_data[p] for p in train_patients if p in patient_data}
+
+        if not train_patients:
+            logger.error("No train patients available for pretraining")
+            return {}
+
+        pretrain_max_samples = int(config.get('deep_learning', {}).get('pretrain_max_samples', 50000))
+        seed = int(config.get('training', {}).get('random_seed', 42))
+        rng = np.random.default_rng(seed)
+
+        # Pass 1: count available samples without loading all arrays simultaneously
+        train_counts = {}
+        total_train_samples = 0
+        total_train_preictal = 0
+
+        for patient_id in train_patients:
+            cache_file, _ = patient_cache[patient_id]
+            with np.load(cache_file) as cached:
+                y = cached['y']
+            n_samples = int(len(y))
+            if n_samples == 0:
+                logger.warning(f"  {patient_id}: Empty cache, skipping")
+                continue
+            train_counts[patient_id] = n_samples
+            total_train_samples += n_samples
+            total_train_preictal += int(y.sum())
+
+        if not train_counts:
+            logger.error("No valid train data found in cache")
+            return {}
+
+        sample_ratio = 1.0
+        if pretrain_max_samples > 0 and total_train_samples > pretrain_max_samples:
+            sample_ratio = pretrain_max_samples / total_train_samples
+
+        logger.info(
+            f"  Train pool before subsampling: {total_train_samples} samples, "
+            f"{total_train_preictal} preictal"
+        )
+        if sample_ratio < 1.0:
+            logger.info(
+                f"  Subsampling train pool to ~{pretrain_max_samples} samples "
+                f"(ratio={sample_ratio:.3f})"
+            )
+
+        # Pass 2: load one patient at a time, subsample, and keep only sampled tensors
+        train_data = {}
+        for patient_id in train_patients:
+            if patient_id not in train_counts:
+                continue
+            cache_file, _ = patient_cache[patient_id]
+            with np.load(cache_file) as cached:
+                X = cached['X']
+                y = cached['y']
+
+            target_samples = max(1, int(round(len(y) * sample_ratio))) if sample_ratio < 1.0 else len(y)
+            if target_samples < len(y):
+                X, y = sample_patient_for_pretraining(X, y, target_samples, rng)
+
+            train_data[patient_id] = (X, y)
+            logger.info(f"  {patient_id}: pretrain samples={len(y)}, preictal={int(y.sum())}")
+
         logger.info(f"  Using {len(train_data)} train patients for pretraining")
         
         global_model = pretrain_global_model(
@@ -385,8 +518,16 @@ def run_transfer_learning_pipeline(
             n_timepoints=n_timepoints,
             epochs=config.get('deep_learning', {}).get('pretrain_epochs', 30),
             batch_size=config.get('deep_learning', {}).get('batch_size', 64),
-            save_path=pretrained_model_path
+            save_path=pretrained_model_path,
+            max_samples=pretrain_max_samples
         )
+
+        del train_data
+        gc.collect()
+
+    # We only need the checkpoint on disk for per-patient fine-tuning.
+    del global_model
+    gc.collect()
     
     # Step 4: Fine-tune and evaluate for each patient
     logger.info("Step 4: Fine-tuning and evaluating for each patient")
@@ -396,15 +537,15 @@ def run_transfer_learning_pipeline(
     test_results = {}
     
     for patient_id in patients:
-        if patient_id not in patient_data:
-            continue
-        
         is_test_patient = patient_id in test_patients and patient_id not in train_patients
         patient_type = "TEST" if is_test_patient else "TRAIN"
         logger.info(f"  Processing {patient_id} [{patient_type}]")
-        
-        X, y = patient_data[patient_id]
-        windows_df = patient_windows[patient_id]
+
+        cache_file, windows_cache = patient_cache[patient_id]
+        with np.load(cache_file) as cached:
+            X = cached['X']
+            y = cached['y']
+        windows_df = pd.read_csv(windows_cache)
         
         # Normalize channel count to match model
         patient_channels = X.shape[1]
@@ -590,6 +731,11 @@ def run_transfer_learning_pipeline(
             f"FA/24h={patient_result['fa_per_24h']:.2f}, "
             f"AUC={patient_result['finetune_val_auc']:.3f}"
         )
+
+        # Explicit cleanup keeps resident memory stable across long runs.
+        del X, y, windows_df, X_clean, y_clean, windows_df_clean
+        del entropy_features, patient_model, finetune_history, probs, alarms_df
+        gc.collect()
     
     # Step 5: Generate summary report
     logger.info("Step 5: Generating summary report")

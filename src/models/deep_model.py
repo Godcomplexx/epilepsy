@@ -258,9 +258,24 @@ class EEGDataset(Dataset):
             entropy_features: Optional entropy features (n_samples, n_entropy_features)
             transform: Optional transform to apply
         """
-        self.data = torch.FloatTensor(data)
-        self.labels = torch.FloatTensor(labels)
-        self.entropy_features = torch.FloatTensor(entropy_features) if entropy_features is not None else None
+        # Use zero-copy tensor views when possible (avoids doubling RAM on large datasets).
+        if isinstance(data, np.ndarray):
+            self.data = torch.from_numpy(data.astype(np.float32, copy=False))
+        else:
+            self.data = torch.as_tensor(data, dtype=torch.float32)
+
+        if isinstance(labels, np.ndarray):
+            self.labels = torch.from_numpy(labels.astype(np.float32, copy=False))
+        else:
+            self.labels = torch.as_tensor(labels, dtype=torch.float32)
+
+        if entropy_features is not None:
+            if isinstance(entropy_features, np.ndarray):
+                self.entropy_features = torch.from_numpy(entropy_features.astype(np.float32, copy=False))
+            else:
+                self.entropy_features = torch.as_tensor(entropy_features, dtype=torch.float32)
+        else:
+            self.entropy_features = None
         self.transform = transform
     
     def __len__(self) -> int:
@@ -848,7 +863,8 @@ def pretrain_global_model(
     save_path: Optional[Path] = None,
     device: str = 'auto',
     n_entropy_features: int = 0,
-    patient_entropy: Optional[Dict[str, np.ndarray]] = None
+    patient_entropy: Optional[Dict[str, np.ndarray]] = None,
+    max_samples: int = 50000
 ) -> SeizurePredictorDL:
     """
     Pretrain a global model on all patients.
@@ -863,16 +879,14 @@ def pretrain_global_model(
         device: Device to use
         n_entropy_features: Number of entropy features (0 = disabled)
         patient_entropy: Dict of patient_id -> entropy_features arrays
+        max_samples: Maximum windows used for pretraining after subsampling
         
     Returns:
         Pretrained model
     """
     logger.info(f"Pretraining global model on {len(patient_data)} patients")
-    
-    # Combine all patient data, normalizing channel count
-    all_X = []
-    all_y = []
-    
+
+    # Log dataset composition
     for patient_id, (X, y) in patient_data.items():
         patient_channels = X.shape[1]
         
@@ -888,12 +902,11 @@ def pretrain_global_model(
             logger.info(f"  {patient_id}: {len(y)} samples, {y.sum():.0f} preictal (truncated {patient_channels}→{n_channels} channels)")
         else:
             logger.info(f"  {patient_id}: {len(y)} samples, {y.sum():.0f} preictal")
-        
-        all_X.append(X)
-        all_y.append(y)
-    
+
     # Subsample BEFORE concatenation to save memory
-    max_samples = 50000  # ~3 GB - balanced for memory and performance
+    max_samples = int(max_samples)
+    if max_samples <= 0:
+        max_samples = 50000
     
     # First, compute total and decide on sampling ratio
     total_samples = sum(len(y) for _, (X, y) in enumerate(patient_data.values()))
@@ -964,7 +977,7 @@ def pretrain_global_model(
             normalized_X.append(X)
         
         X_combined = np.concatenate(normalized_X, axis=0)
-        y_combined = np.concatenate(all_y, axis=0)
+        y_combined = np.concatenate([y for _, y in patient_data.values()], axis=0)
         del normalized_X
     
     logger.info(f"After processing: {len(y_combined)} samples, {y_combined.sum():.0f} preictal")

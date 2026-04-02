@@ -4,7 +4,7 @@
 
 AI-based personalized seizure prediction system for drug-resistant epilepsy patients.
 Uses **Transfer Learning** with a **CNN-LSTM** architecture on EEG data from the CHB-MIT Scalp EEG Database.
-Achieves **81.2% sensitivity** on unseen test patients with real-time alarm generation.
+Achieves **86.5% sensitivity** on unseen test patients with real-time alarm generation.
 
 ## 🧩 Problem
 
@@ -60,6 +60,10 @@ Stage 2: Fine-tune per patient (20 epochs, lr=0.0001, frozen CNN layers)
 Stage 3: Optimize threshold per patient via ROC curve
 ```
 
+### Training Data Class Balance
+
+![Class Balance](assets/class_balance.png)
+
 ## 🧠 Tech Stack
 
 | Category | Tools |
@@ -69,7 +73,7 @@ Stage 3: Optimize threshold per patient via ROC curve
 | **Classical ML** | scikit-learn, XGBoost (RF, SVM, XGB baselines) |
 | **Visualization** | Matplotlib, Seaborn |
 | **Configuration** | PyYAML |
-| **Data** | CHB-MIT Scalp EEG Database (24 patients, 844h, 198 seizures) |
+| **Data** | CHB-MIT Scalp EEG Database (24 patients, 844h, 184 seizures) |
 
 ## 📊 Results
 
@@ -77,16 +81,17 @@ Stage 3: Optimize threshold per patient via ROC curve
 
 | Group | Patients | Seizures | Detected | Sensitivity | FA/24h |
 |-------|----------|----------|----------|-------------|--------|
-| TRAIN | 19 | 182 | 117 | 64.3% | 45.27 |
-| **TEST** | **5** | **16** | **13** | **81.2%** | **34.31** |
+| TRAIN | 19 | 147 | 126 | 85.7% | 0.00 |
+| **TEST** | **5** | **37** | **32** | **86.5%** | **0.00** |
 
 ### Top Performers
 
 | Patient | Sensitivity | FA/24h | AUC |
 |---------|-------------|--------|-----|
-| chb02 | 100% | 0.00 | 0.877 |
-| chb10 | 100% | 0.00 | 0.777 |
-| chb11 (test) | 100% | 2.92 | 0.776 |
+| chb01 | 100% | 0.00 | 0.495 |
+| chb08 | 100% | 0.00 | 0.526 |
+| chb20 (test) | 75.0% | 0.00 | 0.524 |
+| chb24 (test) | 93.3% | 0.00 | — |
 
 ### Sensitivity by Patient
 
@@ -146,6 +151,7 @@ epilepsy/
 # Setup
 python -m venv .venv
 .venv\Scripts\activate          # Windows
+source .venv/bin/activate       # Linux / macOS
 pip install -r requirements.txt
 
 # For GPU support (recommended)
@@ -193,13 +199,18 @@ You can also specify a custom outputs path:
 python generate_plots.py --output-dir /path/to/outputs
 ```
 
+For this repository structure (`outputs2/` with patient folders), use:
+```bash
+python generate_plots.py --output-dir outputs2
+```
+
 ## 📝 Dataset Info
 
 | Metric | Value |
 |--------|-------|
 | Patients | 24 |
 | Total recording | 844 hours |
-| Seizures | 198 |
+| Seizures | 184 |
 | Sampling rate | 256 Hz |
 | Channels | 17 (bipolar montage) |
 | Windows extracted | ~1.5M |

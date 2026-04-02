@@ -4,6 +4,7 @@ Module for EEG signal preprocessing.
 
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+import warnings
 
 import numpy as np
 from scipy import signal
@@ -58,7 +59,14 @@ def _load_with_mne(
     verbose: bool
 ) -> Tuple[np.ndarray, float, List[str]]:
     """Load EDF using MNE."""
-    raw = mne.io.read_raw_edf(str(edf_path), preload=True, verbose=verbose)
+    # CHB-MIT EDF files may contain duplicate labels; suppress this known warning.
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            category=RuntimeWarning,
+            message="Channel names are not unique.*"
+        )
+        raw = mne.io.read_raw_edf(str(edf_path), preload=True, verbose=verbose)
     
     # Get available channels
     available_channels = raw.ch_names
@@ -69,7 +77,7 @@ def _load_with_mne(
         if len(channels_to_pick) < len(channels):
             missing = set(channels) - set(channels_to_pick)
             logger.warning(f"Missing channels: {missing}")
-        raw.pick_channels(channels_to_pick)
+        raw.pick(channels_to_pick)
     
     data = raw.get_data()
     sfreq = raw.info['sfreq']

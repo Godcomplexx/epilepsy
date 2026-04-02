@@ -3,7 +3,7 @@ Generate publication-quality plots for README / portfolio.
 
 Usage:
     python generate_plots.py                          # auto-detect outputs path from config
-    python generate_plots.py --output-dir path/to/outputs  # specify outputs path manually
+    python generate_plots.py --output-dir outputs2    # specify outputs path manually
 
 Generates:
     assets/
@@ -67,6 +67,29 @@ def load_results_json(tl_dir: Path):
         with open(path) as f:
             return json.load(f)
     return None
+
+
+def resolve_transfer_learning_dir(output_dir: Path) -> Path:
+    """
+    Resolve transfer-learning results directory from different layouts.
+
+    Supported layouts:
+    1) output_dir/transfer_learning/chbXX/... (new)
+    2) output_dir/chbXX/... (legacy, e.g. outputs2/)
+    """
+    nested = output_dir / "transfer_learning"
+    if nested.exists():
+        return nested
+
+    has_patient_dirs = any(
+        p.is_dir() and p.name.startswith("chb")
+        for p in output_dir.iterdir()
+    )
+    has_results_file = (output_dir / "results_transfer_learning.json").exists()
+    if has_patient_dirs or has_results_file:
+        return output_dir
+
+    return nested
 
 
 # ── Plot 1: Sensitivity by patient ──────────────────────────────────────
@@ -289,7 +312,7 @@ def main():
             print("ERROR: No --output-dir and config/default.yaml not found")
             sys.exit(1)
 
-    tl_dir = output_dir / "transfer_learning"
+    tl_dir = resolve_transfer_learning_dir(output_dir)
     if not tl_dir.exists():
         print(f"ERROR: {tl_dir} not found. Run the training pipeline first:")
         print("  python run_transfer.py --config config/default.yaml")
@@ -317,7 +340,6 @@ def main():
     plot_class_balance(patients)
 
     print(f"\nAll plots saved to {ASSETS_DIR.resolve()}/")
-    print("Now uncomment the image sections in README.md to display them.")
 
 
 if __name__ == "__main__":
